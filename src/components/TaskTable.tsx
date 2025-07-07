@@ -15,11 +15,6 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible"
-import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -51,6 +46,19 @@ export function TaskTable({ author, onUpdateAuthor }: TaskTableProps) {
   const [isTaskDialogOpen, setIsTaskDialogOpen] = useState(false);
   const [viewingNotesTask, setViewingNotesTask] = useState<Task | null>(null);
   const [isNotesDialogOpen, setIsNotesDialogOpen] = useState(false);
+  const [openTaskIds, setOpenTaskIds] = useState<Set<string>>(new Set());
+
+  const handleToggleTaskOpen = (taskId: string) => {
+    setOpenTaskIds(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(taskId)) {
+        newSet.delete(taskId);
+      } else {
+        newSet.add(taskId);
+      }
+      return newSet;
+    });
+  };
 
   const handleAddTask = () => {
     setEditingTask(null);
@@ -149,105 +157,100 @@ export function TaskTable({ author, onUpdateAuthor }: TaskTableProps) {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {author.tasks.map(task => (
-              <Collapsible asChild key={task.id}>
-                <>
-                  <TableRow className={isPast(new Date(task.deadline)) && !task.subtasks.every(st => st.completed) ? 'bg-destructive/10' : ''} data-state={task.subtasks.every(st => st.completed) ? 'completed' : 'pending'}>
-                    <TableCell>
-                      <div className="flex items-center gap-3">
-                        {task.subtasks.length > 0 && (
-                          <CollapsibleTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0">
-                              <ChevronDown className="h-4 w-4 transition-transform [&[data-state=open]]:rotate-180" />
-                            </Button>
-                          </CollapsibleTrigger>
-                        )}
-                        <span className="font-medium">{task.description}</span>
+            {author.tasks.flatMap(task => {
+              const isOpen = openTaskIds.has(task.id);
+              return [
+                <TableRow key={task.id} className={isPast(new Date(task.deadline)) && !task.subtasks.every(st => st.completed) ? 'bg-destructive/10' : ''} data-state={task.subtasks.every(st => st.completed) ? 'completed' : 'pending'}>
+                  <TableCell>
+                    <div className="flex items-center gap-3">
+                      {task.subtasks.length > 0 && (
+                        <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => handleToggleTaskOpen(task.id)}>
+                          <ChevronDown className={`h-4 w-4 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+                        </Button>
+                      )}
+                      <span className="font-medium">{task.description}</span>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant={getPriorityBadgeVariant(task.priority)}>{task.priority}</Badge>
+                  </TableCell>
+                  <TableCell>
+                    <span className={isPast(new Date(task.deadline)) ? 'text-destructive font-medium' : ''}>
+                      {format(new Date(task.deadline), 'PP')}
+                    </span>
+                  </TableCell>
+                  <TableCell>
+                    <PomodoroTimer />
+                  </TableCell>
+                  <TableCell className="text-right">
+                     <Button variant="ghost" size="icon" onClick={() => { setViewingNotesTask(task); setIsNotesDialogOpen(true); }}>
+                          <FileText className="h-4 w-4" />
+                          <span className="sr-only">Notes</span>
+                      </Button>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon">
+                          <MoreHorizontal className="h-4 w-4" />
+                          <span className="sr-only">Task actions</span>
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => handleEditTask(task)}>
+                          <Edit className="mr-2 h-4 w-4" />
+                          Edit
+                        </DropdownMenuItem>
+                        <AlertDialog>
+                            <AlertDialogTrigger className="w-full">
+                                <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-destructive focus:text-destructive">
+                                    <Trash2 className="mr-2 h-4 w-4" />
+                                    Delete
+                                </DropdownMenuItem>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                                <AlertDialogHeader>
+                                    <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                        This action cannot be undone. This will permanently delete the task and all its subtasks.
+                                    </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                    <AlertDialogAction onClick={() => handleDeleteTask(task.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Continue</AlertDialogAction>
+                                </AlertDialogFooter>
+                            </AlertDialogContent>
+                        </AlertDialog>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </TableCell>
+                </TableRow>,
+                isOpen && task.subtasks.length > 0 ? (
+                  <TableRow key={`${task.id}-subtasks`}>
+                    <TableCell colSpan={5} className="p-0">
+                      <div className="p-4 pl-16 bg-muted/50">
+                          <h4 className="font-semibold mb-2">Subtasks</h4>
+                          <div className="space-y-2">
+                            {task.subtasks.map(subtask => (
+                              <div key={subtask.id} className="flex items-center gap-2">
+                                <Checkbox
+                                  id={`subtask-${subtask.id}`}
+                                  checked={subtask.completed}
+                                  onCheckedChange={() => handleToggleSubtask(task.id, subtask.id)}
+                                />
+                                <label
+                                  htmlFor={`subtask-${subtask.id}`}
+                                  className={`text-sm ${subtask.completed ? 'line-through text-muted-foreground' : ''}`}
+                                >
+                                  {subtask.description}
+                                </label>
+                              </div>
+                            ))}
+                          </div>
                       </div>
                     </TableCell>
-                    <TableCell>
-                      <Badge variant={getPriorityBadgeVariant(task.priority)}>{task.priority}</Badge>
-                    </TableCell>
-                    <TableCell>
-                      <span className={isPast(new Date(task.deadline)) ? 'text-destructive font-medium' : ''}>
-                        {format(new Date(task.deadline), 'PP')}
-                      </span>
-                    </TableCell>
-                    <TableCell>
-                      <PomodoroTimer />
-                    </TableCell>
-                    <TableCell className="text-right">
-                       <Button variant="ghost" size="icon" onClick={() => { setViewingNotesTask(task); setIsNotesDialogOpen(true); }}>
-                            <FileText className="h-4 w-4" />
-                            <span className="sr-only">Notes</span>
-                        </Button>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon">
-                            <MoreHorizontal className="h-4 w-4" />
-                            <span className="sr-only">Task actions</span>
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => handleEditTask(task)}>
-                            <Edit className="mr-2 h-4 w-4" />
-                            Edit
-                          </DropdownMenuItem>
-                          <AlertDialog>
-                              <AlertDialogTrigger className="w-full">
-                                  <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-destructive focus:text-destructive">
-                                      <Trash2 className="mr-2 h-4 w-4" />
-                                      Delete
-                                  </DropdownMenuItem>
-                              </AlertDialogTrigger>
-                              <AlertDialogContent>
-                                  <AlertDialogHeader>
-                                      <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                                      <AlertDialogDescription>
-                                          This action cannot be undone. This will permanently delete the task and all its subtasks.
-                                      </AlertDialogDescription>
-                                  </AlertDialogHeader>
-                                  <AlertDialogFooter>
-                                      <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                      <AlertDialogAction onClick={() => handleDeleteTask(task.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Continue</AlertDialogAction>
-                                  </AlertDialogFooter>
-                              </AlertDialogContent>
-                          </AlertDialog>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
                   </TableRow>
-                  {task.subtasks.length > 0 && (
-                    <CollapsibleContent asChild>
-                       <TableRow>
-                          <TableCell colSpan={5} className="p-0">
-                            <div className="p-4 pl-16 bg-muted/50">
-                                <h4 className="font-semibold mb-2">Subtasks</h4>
-                                <div className="space-y-2">
-                                  {task.subtasks.map(subtask => (
-                                    <div key={subtask.id} className="flex items-center gap-2">
-                                      <Checkbox
-                                        id={`subtask-${subtask.id}`}
-                                        checked={subtask.completed}
-                                        onCheckedChange={() => handleToggleSubtask(task.id, subtask.id)}
-                                      />
-                                      <label
-                                        htmlFor={`subtask-${subtask.id}`}
-                                        className={`text-sm ${subtask.completed ? 'line-through text-muted-foreground' : ''}`}
-                                      >
-                                        {subtask.description}
-                                      </label>
-                                    </div>
-                                  ))}
-                                </div>
-                            </div>
-                          </TableCell>
-                       </TableRow>
-                    </CollapsibleContent>
-                  )}
-                </>
-              </Collapsible>
-            ))}
+                ) : null
+              ].filter(Boolean);
+            })}
           </TableBody>
         </Table>
       </div>
