@@ -74,7 +74,7 @@ export function PomodoroTimer() {
   };
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex flex-wrap items-center gap-2">
       <div className="font-mono text-lg font-semibold tabular-nums text-muted-foreground">
         <span>{String(minutes).padStart(2, '0')}</span>:
         <span>{String(seconds).padStart(2, '0')}</span>

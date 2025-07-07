@@ -149,7 +149,7 @@ export function TaskTable({ author, onUpdateAuthor }: TaskTableProps) {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-[40%]">Task Description</TableHead>
+              <TableHead>Task Description</TableHead>
               <TableHead>Priority</TableHead>
               <TableHead>Deadline</TableHead>
               <TableHead>Timer</TableHead>
@@ -176,7 +176,8 @@ export function TaskTable({ author, onUpdateAuthor }: TaskTableProps) {
                   </TableCell>
                   <TableCell>
                     <span className={isPast(new Date(task.deadline)) ? 'text-destructive font-medium' : ''}>
-                      {format(new Date(task.deadline), 'PP')}
+                      <span className="hidden md:inline">{format(new Date(task.deadline), 'PP')}</span>
+                      <span className="md:hidden">{format(new Date(task.deadline), 'MMM d')}</span>
                     </span>
                   </TableCell>
                   <TableCell>
