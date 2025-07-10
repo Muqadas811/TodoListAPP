@@ -19,6 +19,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { TaskTable } from './TaskTable';
 import { useToast } from '@/hooks/use-toast';
 import { isToday, isTomorrow } from 'date-fns';
+import { MonthlyProgress } from './MonthlyProgress';
 
 export function TaskDashboard() {
   const [authors, setAuthors] = useLocalStorage<Author[]>('taskmaster-data', initialData);
@@ -108,9 +109,12 @@ export function TaskDashboard() {
           </div>
           <SidebarTrigger />
         </header>
-        <div className="p-4">
+        <div className="p-4 md:p-6">
           {selectedAuthor ? (
-            <TaskTable author={selectedAuthor} onUpdateAuthor={handleUpdateAuthor} />
+            <>
+              <MonthlyProgress author={selectedAuthor} />
+              <TaskTable author={selectedAuthor} onUpdateAuthor={handleUpdateAuthor} />
+            </>
           ) : (
             <div className="flex items-center justify-center h-full text-muted-foreground">
                 Select an author from the sidebar to view their tasks.
